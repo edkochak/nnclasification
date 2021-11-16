@@ -111,8 +111,8 @@ def check():
             # Вывод неправильного предикта
             ind_incorrect = out.argmax(dim=1).eq(
                 answers_batch).tolist().index(False)
-            print(out[ind_incorrect])
-            print(answers_batch[ind_incorrect])
+            print(f"Оценка нейронки - {out[ind_incorrect].tolist()}")
+            print(f'Правильный ответ: {answers_batch[ind_incorrect].item()}')
 
         total_correct += check_predicts
 
