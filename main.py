@@ -101,7 +101,7 @@ def check():
     model.load_state_dict(torch.load('3.model'))
     model.eval()
 
-    tests = get_data_loader('train/', 1)
+    tests = get_data_loader('test/', 1)
     total_correct = 0
     for imgs_batch, answers_batch in tests:
         out = model(imgs_batch)
