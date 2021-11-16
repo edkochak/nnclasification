@@ -42,9 +42,9 @@ class Net(nn.Module):
         super().__init__()
         self.model_name = 'resnet18'
         self.model = models.resnet18(pretrained=True)
-        for param in self.model.parameters():
-            # замораживаем слои, которые уже натренированы
-            param.requires_grad = False
+        # for param in self.model.parameters():
+        #     # замораживаем слои, которые уже натренированы
+        #     param.requires_grad = False
 
         self.model.fc = nn.Sequential(nn.Linear(
             self.model.fc.in_features, 3000), nn.ReLU(), nn.Linear(3000, num_classes))
@@ -62,7 +62,7 @@ def train_model(x, names):
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
-    for epoch in range(300):
+    for epoch in range(20):
         total_loss = 0
         total_correct = 0
         for imgs_batch, answers_batch in x:
@@ -90,7 +90,7 @@ def main():
     data = get_data_loader('train')
     nn = train_model(data, names)
 
-    torch.save(nn.state_dict(), '2.model')
+    torch.save(nn.state_dict(), '3.model')
 
 
 def check():
@@ -98,10 +98,10 @@ def check():
         'George_W_Bush', 'Colin_Powell', 'Tony_Blair', 'Donald_Rumsfeld', 'Gerhard_Schroeder', 'Ariel_Sharon', 'Hugo_Chavez', 'Junichiro_Koizumi', 'Serena_Williams', 'John_Ashcroft', 'Jacques_Chirac', 'Vladimir_Putin'
     ]
     model = Net(len(names))
-    model.load_state_dict(torch.load('2.model'))
+    model.load_state_dict(torch.load('3.model'))
     model.eval()
 
-    tests = get_data_loader('test/', 1)
+    tests = get_data_loader('train/', 1)
     total_correct = 0
     for imgs_batch, answers_batch in tests:
         out = model(imgs_batch)
