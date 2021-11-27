@@ -16,6 +16,8 @@ import random
 from torchsummary import summary
 from torch.utils.tensorboard import SummaryWriter
 
+pathtodata = '2'
+
 
 def get_num_correct(preds, labels):
     # Количество правильных предиктов
@@ -62,13 +64,18 @@ def train_model(names):
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
+    for param in list(net.model.parameters())[:-6]:
+        param.requires_grad = False
+        # Замораживаем все сверточные слои
+
     for epoch in range(NEPOCH):
-        x = get_data_loader(r'C:\nn\viola-jones\onlyfaces1')
+        x = get_data_loader(pathtodata+'\\train')
         total_loss = 0
         total_correct = 0
-        if epoch == int(NEPOCH/2):
-            for param in list(net.model.parameters())[:-4]:
-                param.requires_grad = False
+        if epoch == 9:
+            for param in list(net.model.parameters())[:-6]:
+                param.requires_grad = True
+                # размораживаем все сверточные слои, на какой то эпохе
         for imgs_batch, answers_batch in x:
             out = net(imgs_batch)
             optimizer.zero_grad()
@@ -89,23 +96,25 @@ def train_model(names):
 
 def main_for_train():
     nn = train_model(names)
-    torch.save(nn.state_dict(), '6.model')
+    torch.save(nn.state_dict(), 'models/7.model')
 
 
 def raw_check(model=None):
     if model == None:
         model = Net(len(names))
-        model.load_state_dict(torch.load('6.model'))
+        model.load_state_dict(torch.load('models/7.model'))
+    status_is_train = model.training
     model.eval()
-    n = 9
+    n = 2
     total_correct = 0
     for _ in range(n):
-        tests = get_data_loader(r'C:\nn\viola-jones\onlyfacestest1', 1)
+        tests = get_data_loader(pathtodata+r'\\test', 1)
         for imgs_batch, answers_batch in tests:
             out = model(imgs_batch)
             check_predicts = get_num_correct(out, answers_batch)
             total_correct += check_predicts
-    model.train()
+    if status_is_train:
+        model.train()
     return total_correct/(len(tests.dataset)*n)
 
 
@@ -115,33 +124,36 @@ def check_for_one(path):
         T.ToTensor()
     ])
     model = Net(len(names))
-    model.load_state_dict(torch.load('6.model'))
+    model.load_state_dict(torch.load('models/7.model'))
     model.eval()
 
     original_image = cv2.imread(path)
+    h1, w1, _ = original_image.shape
     grayscale_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
     face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + 'haarcascade_frontalface_alt.xml')
+        cv2.data.haarcascades + 'haarcascade_frontalface_alt.xml')
     detected_faces = face_cascade.detectMultiScale(grayscale_image)
-    if detected_faces == ():
+    if type(detected_faces) == tuple:
+        #если на фотке нет лиц он выдает пустой массив а не np.array
         return 'Нет лиц'
     (column, row, width, height) = detected_faces[0]
-    d=30
-    original_image = original_image[row-d:row +height+d, column-d:column+width+d]
-
-            
-    img =Image.fromarray(original_image[:,:,::-1])
+    d = 0.2
+    dx = int(d*width)
+    dy = int(d*height)
+    original_image = original_image[max(row-dy,0):min(row +
+                                    height+dy,h1), max(column-dx,0):min(column+width+dx,w1)]
+    # обрезаем фото и еще меняем GBR -> RBG
+    img = Image.fromarray(original_image)
     img = transform(img).unsqueeze(0)
-
     predict = model(img)
-
     answer = predict.argmax(dim=1)
-    # print([(item,names[i]) for i,item in enumerate(predict.tolist()[0])])
+    
+    # print(sorted([(item,names[i]) for i,item in enumerate(predict.tolist()[0])],reverse=True)[:3])
     return names[answer.item()]
 
 
 def get_names():
-    data = get_data_loader('train')
+    data = get_data_loader(pathtodata+'\\train')
     names = {}
     for path, index in data.dataset.samples:
         if index not in names:
@@ -152,7 +164,7 @@ def get_names():
 
 if __name__ == '__main__':
     names = get_names()
-    print(names)
+    print('Всего людей: ',len(names))
     # main_for_train()
     print(f'Проверка на тестах:{raw_check()}')
     print('Фотографии из интернета:')
